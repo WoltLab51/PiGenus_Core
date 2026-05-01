@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import Session, select
 from pigenus.models.memory import MemoryItem
@@ -24,7 +24,7 @@ def store_memory(
         existing.source = source
         existing.expires_at = expires_at
         existing.importance_score = importance_score
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         session.add(existing)
         session.commit()
         session.refresh(existing)
@@ -39,8 +39,8 @@ def store_memory(
         source=source,
         expires_at=expires_at,
         importance_score=importance_score,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        updated_at=datetime.now(timezone.utc).replace(tzinfo=None),
     )
     session.add(item)
     session.commit()

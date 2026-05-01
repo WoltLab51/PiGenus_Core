@@ -1,7 +1,7 @@
 import json
 import uuid
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import Session
 from pigenus.models.audit import AuditLog
 
@@ -18,7 +18,7 @@ def log_event(
 ) -> AuditLog:
     log = AuditLog(
         id=str(uuid.uuid4()),
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc).replace(tzinfo=None),
         actor_type=actor_type,
         actor_id=actor_id,
         action=action,

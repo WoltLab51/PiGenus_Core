@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import Session, text
 from pigenus.core.config import get_settings
 
-_start_time = datetime.utcnow()
+_start_time = datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def check_db_health(session: Session) -> bool:
@@ -16,7 +16,7 @@ def check_db_health(session: Session) -> bool:
 def get_health_status(session: Session) -> dict:
     settings = get_settings()
     db_ok = check_db_health(session)
-    uptime_seconds = (datetime.utcnow() - _start_time).total_seconds()
+    uptime_seconds = (datetime.now(timezone.utc).replace(tzinfo=None) - _start_time).total_seconds()
     return {
         "status": "healthy" if db_ok else "degraded",
         "version": settings.version,

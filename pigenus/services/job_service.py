@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from sqlmodel import Session, select, col
 from pigenus.models.job import Job, JobEvent
@@ -24,8 +24,8 @@ def submit_job(
         payload_json=payload_json,
         status="pending",
         priority=priority,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        updated_at=datetime.now(timezone.utc).replace(tzinfo=None),
         created_by_user_id=created_by_user_id,
     )
     session.add(job)
@@ -53,8 +53,8 @@ def lease_job(worker_id: str, capabilities: list, session: Session) -> Optional[
                 pass
         job.status = "leased"
         job.worker_id = worker_id
-        job.leased_at = datetime.utcnow()
-        job.updated_at = datetime.utcnow()
+        job.leased_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        job.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         session.add(job)
         _add_event(job.id, "leased", session, worker_id=worker_id)
         session.commit()
@@ -68,7 +68,7 @@ def ack_job(job_id: str, worker_id: str, session: Session) -> Job:
     if not job:
         raise ValueError(f"Job {job_id} not found")
     job.status = "running"
-    job.updated_at = datetime.utcnow()
+    job.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     session.add(job)
     _add_event(job_id, "ack", session, worker_id=worker_id)
     session.commit()
@@ -81,8 +81,8 @@ def complete_job(job_id: str, worker_id: str, result: Optional[dict], session: S
     if not job:
         raise ValueError(f"Job {job_id} not found")
     job.status = "completed"
-    job.completed_at = datetime.utcnow()
-    job.updated_at = datetime.utcnow()
+    job.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    job.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     job.result_json = json.dumps(result) if result else None
     session.add(job)
     _add_event(job_id, "completed", session, worker_id=worker_id)
@@ -97,8 +97,8 @@ def fail_job(job_id: str, worker_id: str, error: str, session: Session) -> Job:
         raise ValueError(f"Job {job_id} not found")
     job.status = "failed"
     job.error_message = error
-    job.completed_at = datetime.utcnow()
-    job.updated_at = datetime.utcnow()
+    job.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    job.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     session.add(job)
     _add_event(job_id, "failed", session, worker_id=worker_id, message=error)
     session.commit()
@@ -108,7 +108,7 @@ def fail_job(job_id: str, worker_id: str, error: str, session: Session) -> Job:
 
 def requeue_stuck_jobs(session: Session) -> int:
     settings = get_settings()
-    threshold = datetime.utcnow() - timedelta(seconds=settings.job_lease_timeout_seconds)
+    threshold = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=settings.job_lease_timeout_seconds)
     statement = select(Job).where(
         col(Job.status).in_(["leased", "running"]),
         col(Job.updated_at) < threshold,
@@ -119,7 +119,7 @@ def requeue_stuck_jobs(session: Session) -> int:
         job.status = "pending"
         job.worker_id = None
         job.leased_at = None
-        job.updated_at = datetime.utcnow()
+        job.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         session.add(job)
         _add_event(job.id, "requeued", session, message="Stuck job requeued")
         count += 1
@@ -133,7 +133,7 @@ def _add_event(job_id: str, event_type: str, session: Session,
         id=str(uuid.uuid4()),
         job_id=job_id,
         event_type=event_type,
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc).replace(tzinfo=None),
         worker_id=worker_id,
         message=message,
     )

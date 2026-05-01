@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from sqlmodel import Session, select
 from pigenus.models.worker import Worker
@@ -15,8 +15,8 @@ def register_worker(name: str, hostname: str, capabilities: list, secret: str, s
         hostname=hostname,
         capabilities=json.dumps(capabilities),
         status="idle",
-        last_heartbeat=datetime.utcnow(),
-        registered_at=datetime.utcnow(),
+        last_heartbeat=datetime.now(timezone.utc).replace(tzinfo=None),
+        registered_at=datetime.now(timezone.utc).replace(tzinfo=None),
         secret_hash=hash_secret(secret),
     )
     session.add(worker)
@@ -29,7 +29,7 @@ def heartbeat(worker_id: str, status: str, session: Session) -> Worker:
     worker = session.get(Worker, worker_id)
     if not worker:
         raise ValueError(f"Worker {worker_id} not found")
-    worker.last_heartbeat = datetime.utcnow()
+    worker.last_heartbeat = datetime.now(timezone.utc).replace(tzinfo=None)
     worker.status = status
     session.add(worker)
     session.commit()
@@ -39,7 +39,7 @@ def heartbeat(worker_id: str, status: str, session: Session) -> Worker:
 
 def mark_offline_workers(session: Session) -> int:
     settings = get_settings()
-    threshold = datetime.utcnow() - timedelta(seconds=settings.worker_heartbeat_timeout_seconds)
+    threshold = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=settings.worker_heartbeat_timeout_seconds)
     statement = select(Worker).where(Worker.last_heartbeat < threshold, Worker.status != "offline")
     workers = session.exec(statement).all()
     count = 0

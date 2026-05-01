@@ -3,7 +3,7 @@ from sqlmodel import Session, select, func
 from pigenus.models.user import User
 from pigenus.security.hashing import hash_password, verify_password
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def create_user(username: str, email: str, password: str, session: Session, is_admin: bool = False) -> User:
@@ -13,8 +13,8 @@ def create_user(username: str, email: str, password: str, session: Session, is_a
         email=email,
         hashed_password=hash_password(password),
         is_admin=is_admin,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        updated_at=datetime.now(timezone.utc).replace(tzinfo=None),
     )
     session.add(user)
     session.commit()

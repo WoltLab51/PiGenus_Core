@@ -1,20 +1,20 @@
 import logging
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pigenus.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 
 def rotate_logs() -> None:
-    logger.info("Log rotation triggered at %s", datetime.utcnow().isoformat())
+    logger.info("Log rotation triggered at %s", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
 
 
 def create_backup() -> None:
     settings = get_settings()
     if settings.database_url.startswith("sqlite:///"):
         db_path = settings.database_url.replace("sqlite:///", "")
-        backup_path = db_path + f".backup.{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+        backup_path = db_path + f".backup.{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}"
         try:
             shutil.copy2(db_path, backup_path)
             logger.info("Database backup created at %s", backup_path)
