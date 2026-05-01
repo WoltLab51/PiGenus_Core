@@ -1,13 +1,18 @@
 def test_register_worker(client, admin_user):
-    response = client.post("/api/v1/workers/register", json={
-        "name": "worker1",
-        "hostname": "host1",
-        "capabilities": ["cpu"],
-        "secret": "secret123",
-    })
+    response = client.post(
+        "/api/v1/workers/register",
+        json={
+            "name": "worker1",
+            "hostname": "host1",
+            "capabilities": ["cpu"],
+            "secret": "secret123",
+        },
+        headers={"Authorization": f"Bearer {admin_user['token']}"},
+    )
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "worker1"
+    assert data["capabilities"] == ["cpu"]
     assert "worker_token" in data
     assert data["worker_token"] is not None
 

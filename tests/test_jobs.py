@@ -14,7 +14,6 @@ def test_lease_job(client, admin_user, test_job, test_worker):
     worker_token = test_worker["worker_token"]
     response = client.post(
         "/api/v1/jobs/lease",
-        json={"capabilities": ["cpu", "gpu"]},
         headers={"Authorization": f"Bearer {worker_token}"},
     )
     assert response.status_code == 200
@@ -23,11 +22,20 @@ def test_lease_job(client, admin_user, test_job, test_worker):
     assert data["job"]["status"] == "leased"
 
 
+def test_lease_job_no_jobs_returns_204(client, admin_user, test_worker):
+    """When no pending jobs exist the lease endpoint returns 204 No Content."""
+    worker_token = test_worker["worker_token"]
+    response = client.post(
+        "/api/v1/jobs/lease",
+        headers={"Authorization": f"Bearer {worker_token}"},
+    )
+    assert response.status_code == 204
+
+
 def test_ack_complete_job(client, admin_user, test_job, test_worker):
     worker_token = test_worker["worker_token"]
     lease_resp = client.post(
         "/api/v1/jobs/lease",
-        json={"capabilities": ["cpu", "gpu"]},
         headers={"Authorization": f"Bearer {worker_token}"},
     )
     job_id = lease_resp.json()["job"]["id"]
@@ -49,7 +57,7 @@ def test_ack_complete_job(client, admin_user, test_job, test_worker):
 
 
 def test_fail_job(client, admin_user, test_worker):
-    submit = client.post(
+    client.post(
         "/api/v1/jobs",
         json={"title": "Fail Job", "job_type": "shell_command"},
         headers={"Authorization": f"Bearer {admin_user['token']}"},
@@ -57,7 +65,6 @@ def test_fail_job(client, admin_user, test_worker):
     worker_token = test_worker["worker_token"]
     lease = client.post(
         "/api/v1/jobs/lease",
-        json={"capabilities": ["cpu", "gpu"]},
         headers={"Authorization": f"Bearer {worker_token}"},
     )
     job_id = lease.json()["job"]["id"]

@@ -1,6 +1,8 @@
 import os
 os.environ["PIGENUS_SECRET_KEY"] = "test-secret-key-for-testing-only"
 os.environ["PIGENUS_ADMIN_TOKEN"] = "test-admin-token"
+os.environ["PIGENUS_DATABASE_URL"] = "sqlite://"
+os.environ["PIGENUS_ENVIRONMENT"] = "testing"
 
 import pytest
 from fastapi.testclient import TestClient
@@ -58,12 +60,16 @@ def admin_user_fixture(client: TestClient):
 
 @pytest.fixture(name="test_worker")
 def test_worker_fixture(client: TestClient, admin_user):
-    response = client.post("/api/v1/workers/register", json={
-        "name": "test-worker",
-        "hostname": "worker-host",
-        "capabilities": ["cpu", "gpu"],
-        "secret": "worker-secret-123",
-    })
+    response = client.post(
+        "/api/v1/workers/register",
+        json={
+            "name": "test-worker",
+            "hostname": "worker-host",
+            "capabilities": ["cpu", "gpu"],
+            "secret": "worker-secret-123",
+        },
+        headers={"Authorization": f"Bearer {admin_user['token']}"},
+    )
     assert response.status_code == 201
     return response.json()
 

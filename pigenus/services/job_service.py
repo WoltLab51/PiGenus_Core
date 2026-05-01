@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from sqlmodel import Session, select, col
+from sqlalchemy import update as sa_update
 from pigenus.models.job import Job, JobEvent
 from pigenus.core.config import get_settings
 
@@ -36,13 +37,21 @@ def submit_job(
 
 
 def lease_job(worker_id: str, capabilities: list, session: Session) -> Optional[Job]:
+    """Atomically lease the highest-priority pending job whose requirements the worker meets.
+
+    Uses an UPDATE … WHERE status='pending' AND id=<candidate> to prevent two workers
+    from claiming the same job under concurrent load.
+    """
     statement = (
         select(Job)
         .where(Job.status == "pending")
         .order_by(col(Job.priority).desc(), col(Job.created_at).asc())
     )
-    jobs = session.exec(statement).all()
-    for job in jobs:
+    candidates = session.exec(statement).all()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    for job in candidates:
+        # Filter by capability requirements embedded in payload
         if job.payload_json:
             try:
                 p = json.loads(job.payload_json)
@@ -51,15 +60,22 @@ def lease_job(worker_id: str, capabilities: list, session: Session) -> Optional[
                     continue
             except (json.JSONDecodeError, AttributeError):
                 pass
-        job.status = "leased"
-        job.worker_id = worker_id
-        job.leased_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        job.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        session.add(job)
-        _add_event(job.id, "leased", session, worker_id=worker_id)
-        session.commit()
-        session.refresh(job)
-        return job
+
+        # Atomic claim: only succeeds when job is still pending
+        stmt = (
+            sa_update(Job)
+            .where(Job.id == job.id, Job.status == "pending")
+            .values(status="leased", worker_id=worker_id, leased_at=now, updated_at=now)
+        )
+        result = session.execute(stmt)
+        session.flush()
+        if result.rowcount == 1:
+            session.refresh(job)
+            _add_event(job.id, "leased", session, worker_id=worker_id)
+            session.commit()
+            return job
+        # Another worker claimed it first — try next candidate
+
     return None
 
 
@@ -67,6 +83,10 @@ def ack_job(job_id: str, worker_id: str, session: Session) -> Job:
     job = session.get(Job, job_id)
     if not job:
         raise ValueError(f"Job {job_id} not found")
+    if job.status != "leased":
+        raise ValueError(f"Job {job_id} cannot be acknowledged (current status: '{job.status}')")
+    if job.worker_id != worker_id:
+        raise ValueError(f"Job {job_id} is not leased to this worker")
     job.status = "running"
     job.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     session.add(job)
@@ -80,6 +100,10 @@ def complete_job(job_id: str, worker_id: str, result: Optional[dict], session: S
     job = session.get(Job, job_id)
     if not job:
         raise ValueError(f"Job {job_id} not found")
+    if job.status not in {"running", "leased"}:
+        raise ValueError(f"Job {job_id} cannot be completed (current status: '{job.status}')")
+    if job.worker_id != worker_id:
+        raise ValueError(f"Job {job_id} is not assigned to this worker")
     job.status = "completed"
     job.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
     job.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -95,6 +119,10 @@ def fail_job(job_id: str, worker_id: str, error: str, session: Session) -> Job:
     job = session.get(Job, job_id)
     if not job:
         raise ValueError(f"Job {job_id} not found")
+    if job.status not in {"running", "leased"}:
+        raise ValueError(f"Job {job_id} cannot be failed (current status: '{job.status}')")
+    if job.worker_id != worker_id:
+        raise ValueError(f"Job {job_id} is not assigned to this worker")
     job.status = "failed"
     job.error_message = error
     job.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -138,3 +166,4 @@ def _add_event(job_id: str, event_type: str, session: Session,
         message=message,
     )
     session.add(event)
+

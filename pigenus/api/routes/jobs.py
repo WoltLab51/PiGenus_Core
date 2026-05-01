@@ -1,5 +1,6 @@
+import json
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from sqlmodel import Session, select
 from pydantic import BaseModel
 from pigenus.security.dependencies import get_db, get_current_user, get_current_admin, get_worker_from_token
@@ -18,10 +19,6 @@ class JobSubmitRequest(BaseModel):
     description: Optional[str] = None
     payload_json: Optional[str] = None
     priority: int = 0
-
-
-class JobLeaseRequest(BaseModel):
-    capabilities: List[str] = []
 
 
 class JobCompleteRequest(BaseModel):
@@ -80,19 +77,23 @@ def list_jobs(
 
 @router.post("/lease")
 def lease_job_endpoint(
-    data: JobLeaseRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str = Header(...),
     session: Session = Depends(get_db),
 ):
-    if not authorization or not authorization.startswith("Bearer "):
+    if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Worker token required")
-    token = authorization.replace("Bearer ", "")
+    token = authorization.replace("Bearer ", "", 1)
     worker = get_worker_from_token(token, session)
     if worker.status == "offline":
         raise HTTPException(status_code=403, detail="Worker is offline")
-    job = lease_job(worker.id, data.capabilities, session)
+    # Use the worker's registered capabilities, not self-reported ones
+    try:
+        worker_capabilities = json.loads(worker.capabilities) if worker.capabilities else []
+    except (json.JSONDecodeError, TypeError):
+        worker_capabilities = []
+    job = lease_job(worker.id, worker_capabilities, session)
     if not job:
-        return {"job": None, "message": "No jobs available"}
+        return Response(status_code=204)
     return {"job": _to_response(job)}
 
 

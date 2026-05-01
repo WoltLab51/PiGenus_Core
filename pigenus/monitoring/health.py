@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
-from sqlmodel import Session, text
+from sqlalchemy import text
+from sqlmodel import Session
 from pigenus.core.config import get_settings
 
 _start_time = datetime.now(timezone.utc).replace(tzinfo=None)

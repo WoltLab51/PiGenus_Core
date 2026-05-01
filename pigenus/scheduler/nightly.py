@@ -24,9 +24,12 @@ def run_nightly_maintenance():
 
 
 def setup_scheduler():
-    scheduler.add_job(run_nightly_maintenance, CronTrigger(hour=2, minute=0), id="nightly_maintenance")
-    scheduler.add_job(mark_offline_workers, IntervalTrigger(minutes=5), id="mark_offline_workers")
-    scheduler.add_job(requeue_stuck_jobs, IntervalTrigger(minutes=15), id="requeue_stuck_jobs")
+    scheduler.add_job(run_nightly_maintenance, CronTrigger(hour=2, minute=0),
+                      id="nightly_maintenance", replace_existing=True)
+    scheduler.add_job(mark_offline_workers, IntervalTrigger(minutes=5),
+                      id="mark_offline_workers", replace_existing=True)
+    scheduler.add_job(requeue_stuck_jobs, IntervalTrigger(minutes=15),
+                      id="requeue_stuck_jobs", replace_existing=True)
     logger.info("Scheduler jobs configured.")
 
 

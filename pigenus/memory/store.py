@@ -14,7 +14,8 @@ def store_memory(
     source: Optional[str] = None,
     expires_at: Optional[datetime] = None,
     importance_score: float = 0.0,
-    session: Session = None,
+    *,
+    session: Session,
 ) -> MemoryItem:
     existing = session.exec(select(MemoryItem).where(MemoryItem.key == key)).first()
     if existing:
@@ -56,7 +57,8 @@ def list_memory(
     search: Optional[str] = None,
     tag: Optional[str] = None,
     limit: int = 50,
-    session: Session = None,
+    *,
+    session: Session,
 ) -> list[MemoryItem]:
     statement = select(MemoryItem)
     items = list(session.exec(statement).all())
