@@ -1,0 +1,15 @@
+[Unit]
+Description=PiGenus Scheduler
+After=network.target pigenus.service
+
+[Service]
+Type=simple
+User=pigenus
+WorkingDirectory=/opt/pigenus
+EnvironmentFile=/opt/pigenus/.env
+ExecStart=/opt/pigenus/venv/bin/python -m pigenus.scheduler.nightly
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
