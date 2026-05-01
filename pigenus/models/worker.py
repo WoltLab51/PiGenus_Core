@@ -12,7 +12,7 @@ class Worker(SQLModel, table=True):
     hostname: str
     capabilities: str = Field(default="[]")
     status: str = Field(default="idle")
-    last_heartbeat: datetime = Field(default_factory=datetime.utcnow)
-    registered_at: datetime = Field(default_factory=datetime.utcnow)
+    last_heartbeat: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    registered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     secret_hash: str
     current_job_id: Optional[str] = Field(default=None)

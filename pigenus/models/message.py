@@ -11,5 +11,5 @@ class Message(SQLModel, table=True):
     session_id: str = Field(index=True)
     role: str
     content: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     metadata_json: Optional[str] = Field(default=None)

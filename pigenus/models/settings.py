@@ -10,4 +10,4 @@ class AppSetting(SQLModel, table=True):
     key: str = Field(index=True, unique=True)
     value: str
     description: Optional[str] = Field(default=None)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

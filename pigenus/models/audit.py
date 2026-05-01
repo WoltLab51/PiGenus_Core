@@ -8,7 +8,7 @@ class AuditLog(SQLModel, table=True):
     __tablename__ = "audit_logs"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    timestamp: datetime = Field(default_factory=datetime.utcnow, index=True)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None), index=True)
     actor_type: str
     actor_id: Optional[str] = Field(default=None)
     action: str
