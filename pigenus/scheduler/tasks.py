@@ -29,33 +29,27 @@ def summarize_sessions() -> None:
 
 
 def requeue_stuck_jobs() -> None:
-    from pigenus.db.base import get_session
+    from pigenus.db.base import engine
     from pigenus.services.job_service import requeue_stuck_jobs as _requeue
-    session = next(get_session())
-    try:
+    from sqlmodel import Session
+    with Session(engine) as session:
         count = _requeue(session)
         logger.info("Requeued %d stuck jobs", count)
-    finally:
-        session.close()
 
 
 def mark_offline_workers() -> None:
-    from pigenus.db.base import get_session
+    from pigenus.db.base import engine
     from pigenus.services.worker_service import mark_offline_workers as _mark
-    session = next(get_session())
-    try:
+    from sqlmodel import Session
+    with Session(engine) as session:
         count = _mark(session)
         logger.info("Marked %d workers as offline", count)
-    finally:
-        session.close()
 
 
 def prepare_daily_briefing() -> None:
-    from pigenus.db.base import get_session
+    from pigenus.db.base import engine
     from pigenus.monitoring.metrics import get_metrics
-    session = next(get_session())
-    try:
+    from sqlmodel import Session
+    with Session(engine) as session:
         metrics = get_metrics(session)
         logger.info("Daily briefing: %s", metrics)
-    finally:
-        session.close()
