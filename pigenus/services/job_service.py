@@ -7,18 +7,26 @@ from pigenus.models.job import Job, JobEvent
 from pigenus.core.config import get_settings
 
 
-def submit_job(payload, session: Session) -> Job:
+def submit_job(
+    title: str,
+    job_type: str,
+    session: Session,
+    description: Optional[str] = None,
+    payload_json: Optional[str] = None,
+    priority: int = 0,
+    created_by_user_id: Optional[str] = None,
+) -> Job:
     job = Job(
         id=str(uuid.uuid4()),
-        title=payload.title,
-        description=getattr(payload, "description", None),
-        job_type=payload.job_type,
-        payload_json=getattr(payload, "payload_json", None),
+        title=title,
+        description=description,
+        job_type=job_type,
+        payload_json=payload_json,
         status="pending",
-        priority=getattr(payload, "priority", 0),
+        priority=priority,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
-        created_by_user_id=getattr(payload, "created_by_user_id", None),
+        created_by_user_id=created_by_user_id,
     )
     session.add(job)
     _add_event(job.id, "submitted", session)

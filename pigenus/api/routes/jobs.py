@@ -50,17 +50,15 @@ def submit_job_endpoint(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
 ):
-    class JobPayload:
-        pass
-
-    payload = JobPayload()
-    payload.title = data.title
-    payload.job_type = data.job_type
-    payload.description = data.description
-    payload.payload_json = data.payload_json
-    payload.priority = data.priority
-    payload.created_by_user_id = current_user.id
-    job = submit_job(payload, session)
+    job = submit_job(
+        title=data.title,
+        job_type=data.job_type,
+        description=data.description,
+        payload_json=data.payload_json,
+        priority=data.priority,
+        created_by_user_id=current_user.id,
+        session=session,
+    )
     return _to_response(job)
 
 
