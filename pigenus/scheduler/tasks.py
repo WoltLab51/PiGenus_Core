@@ -1,0 +1,55 @@
+import logging
+import shutil
+from datetime import datetime, timezone
+from pigenus.core.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+def rotate_logs() -> None:
+    logger.info("Log rotation triggered at %s", datetime.now(timezone.utc).replace(tzinfo=None).isoformat())
+
+
+def create_backup() -> None:
+    settings = get_settings()
+    if settings.database_url.startswith("sqlite:///"):
+        db_path = settings.database_url.replace("sqlite:///", "")
+        backup_path = db_path + f".backup.{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S')}"
+        try:
+            shutil.copy2(db_path, backup_path)
+            logger.info("Database backup created at %s", backup_path)
+        except Exception as e:
+            logger.warning("Backup failed: %s", e)
+    else:
+        logger.info("Non-file SQLite DB, skipping backup.")
+
+
+def summarize_sessions() -> None:
+    logger.info("Session summary: placeholder - no stats computed")
+
+
+def requeue_stuck_jobs() -> None:
+    from pigenus.db.base import engine
+    from pigenus.services.job_service import requeue_stuck_jobs as _requeue
+    from sqlmodel import Session
+    with Session(engine) as session:
+        count = _requeue(session)
+        logger.info("Requeued %d stuck jobs", count)
+
+
+def mark_offline_workers() -> None:
+    from pigenus.db.base import engine
+    from pigenus.services.worker_service import mark_offline_workers as _mark
+    from sqlmodel import Session
+    with Session(engine) as session:
+        count = _mark(session)
+        logger.info("Marked %d workers as offline", count)
+
+
+def prepare_daily_briefing() -> None:
+    from pigenus.db.base import engine
+    from pigenus.monitoring.metrics import get_metrics
+    from sqlmodel import Session
+    with Session(engine) as session:
+        metrics = get_metrics(session)
+        logger.info("Daily briefing: %s", metrics)

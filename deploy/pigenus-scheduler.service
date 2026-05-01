@@ -1,0 +1,16 @@
+[Unit]
+Description=PiGenus Scheduler (managed by FastAPI lifespan, not a separate process)
+After=network.target pigenus.service
+
+[Service]
+Type=oneshot
+User=pigenus
+WorkingDirectory=/opt/pigenus
+EnvironmentFile=/opt/pigenus/.env
+# The scheduler is started by the main PiGenus application lifecycle (pigenus.service).
+# This unit exists as a documentation stub; the scheduler has no standalone entrypoint.
+ExecStart=/bin/true
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

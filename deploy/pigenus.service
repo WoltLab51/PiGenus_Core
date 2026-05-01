@@ -1,0 +1,16 @@
+[Unit]
+Description=PiGenus Orchestration Core
+After=network.target
+
+[Service]
+Type=simple
+User=pigenus
+WorkingDirectory=/opt/pigenus
+Environment=PIGENUS_DATABASE_URL=sqlite:////opt/pigenus/data/pigenus.db
+EnvironmentFile=/opt/pigenus/.env
+ExecStart=/opt/pigenus/venv/bin/uvicorn pigenus.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
